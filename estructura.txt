@@ -1,0 +1,7 @@
+CREATE TABLE estudiantes (
+    id INT NOT NULL PRIMARY KEY,
+    nombre VARCHAR(30),
+    apellido VARCHAR(30),
+    edad INT,
+    promedio DECIMAL
+);
