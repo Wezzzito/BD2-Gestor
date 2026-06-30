@@ -1,6 +1,6 @@
 from disco.disco import DISCO
 from memoria.Avl import AVLIndex
-from util.estructura import empaquetar, desempaquetar
+from util.estructura import empaquetar_atributos, desempaquetar
 
 class BaseDeDatos:
     def __init__(self, disco=None):
@@ -28,13 +28,10 @@ class BaseDeDatos:
 
     def cargar_datos(self, nombre_tabla, filas):
         """
-        Carga los registros respetando la ATOMICIDAD:
-        cada registro debe caber completo en un único sector.
-
-        - Si un registro no cabe en un sector → se descarta (no se fragmenta).
-        - Si el disco se llena → se detiene la carga, lo ya guardado queda intacto.
-
-        Devuelve un resumen: {"insertados": int, "descartados": [(fila, motivo), ...], "disco_lleno": bool}
+        Carga los registros usando FRAGMENTACIÓN LÓGICA POR ATRIBUTOS.
+        Cada atributo se guarda íntegramente. Si un atributo no cabe en el 
+        sector actual, se coloca en el siguiente sector, dejando el espacio 
+        sobrante vacío para no decapitar el dato.
         """
         tabla      = self.tablas[nombre_tabla]
         estructura = tabla['estructura']
@@ -43,12 +40,14 @@ class BaseDeDatos:
 
         for fila in filas:
             id_reg  = f"{nombre_tabla}_{len(tabla['registros']) + 1}"
-            binario = empaquetar(estructura, fila)
+            
+            # Convierte la fila a una lista de bloques binarios (uno por atributo)
+            lista_atributos_bytes = empaquetar_atributos(estructura, fila)
 
             try:
-                self.disco.guardar_dato(binario, id_reg)
+                self.disco.guardar_dato(lista_atributos_bytes, id_reg)
             except ValueError as e:
-                # El registro no cabe completo en un sector: se descarta (atómico)
+                # El atributo en sí es más grande que todo el sector (imposible de guardar sin decapitar)
                 resumen["descartados"].append((fila, str(e)))
                 continue
             except MemoryError:

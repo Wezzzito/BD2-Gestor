@@ -431,7 +431,8 @@ class DiscoWidget(QWidget):
         p.drawEllipse(QPointF(cx, cy), mr + 10, mr + 10)
         reg_lba = {}
         for _, ubs in self.disco.mapa_ubicacion_fisica.items():
-            for lb, _, _ in ubs:
+            lbas_unicos_del_registro = set(lb for lb, _, _ in ubs)
+            for lb in lbas_unicos_del_registro:
                 reg_lba[lb] = reg_lba.get(lb, 0) + 1
         C_VACIO = QColor("#1a2e1a")
         C_OCUP  = QColor("#7a5c10")
@@ -773,8 +774,8 @@ class VentanaPrincipal(QMainWindow):
 
         # ── Tabs: Disco | Árbol AVL ──
         self.tabs = QTabWidget()
-        self.tabs.addTab(self._panel_disco(), "💾  Visualización del Disco")
-        self.tabs.addTab(self._panel_avl(),   "🌳  Árbol AVL")
+        self.tabs.addTab(self._panel_disco(), " Visualización del Disco")
+        self.tabs.addTab(self._panel_avl(),   " Árbol AVL")
         right.addWidget(self.tabs, stretch=5)
 
         right.addWidget(self._panel_resultados(), stretch=3)

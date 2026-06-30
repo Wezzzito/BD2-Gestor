@@ -54,6 +54,22 @@ def empaquetar(estructura, datos):
             valores.append(val)
     return struct.pack(formato, *valores)
 
+def empaquetar_atributos(estructura, datos):
+    """
+    Convierte un registro de Python a una LISTA de fragmentos binarios,
+    un fragmento por cada atributo. Útil para guardar atributo por atributo sin decapitar.
+    """
+    lista_bytes = []
+    for (_, tipo), val in zip(estructura, datos):
+        formato = '=' + tipo
+        if tipo.endswith('s'):
+            tam = int(tipo[:-1])
+            val_bytes = val.encode('utf-8')[:tam].ljust(tam, b'\x00')
+            lista_bytes.append(struct.pack(formato, val_bytes))
+        else:
+            lista_bytes.append(struct.pack(formato, val))
+    return lista_bytes
+
 def desempaquetar(estructura, registro_bytes):
     formato = '=' + ''.join(tipo for _, tipo in estructura)
     valores = struct.unpack(formato, registro_bytes)
