@@ -1,0 +1,8 @@
+CREATE TABLE estudiantes (
+    id INT,               -- 4 bytes
+    nombre VARCHAR(10),   -- 10 bytes
+    apellido VARCHAR(10), -- 10 bytes
+    edad INT,             -- 4 bytes
+    promedio FLOAT        -- 4 bytes
+);
+-- Total: 32 bytes por registro

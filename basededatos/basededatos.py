@@ -27,19 +27,43 @@ class BaseDeDatos:
         }
 
     def cargar_datos(self, nombre_tabla, filas):
-        tabla     = self.tablas[nombre_tabla]
+        """
+        Carga los registros respetando la ATOMICIDAD:
+        cada registro debe caber completo en un único sector.
+
+        - Si un registro no cabe en un sector → se descarta (no se fragmenta).
+        - Si el disco se llena → se detiene la carga, lo ya guardado queda intacto.
+
+        Devuelve un resumen: {"insertados": int, "descartados": [(fila, motivo), ...], "disco_lleno": bool}
+        """
+        tabla      = self.tablas[nombre_tabla]
         estructura = tabla['estructura']
+
+        resumen = {"insertados": 0, "descartados": [], "disco_lleno": False}
 
         for fila in filas:
             id_reg  = f"{nombre_tabla}_{len(tabla['registros']) + 1}"
             binario = empaquetar(estructura, fila)
-            self.disco.guardar_dato(binario, id_reg)
-            ubicacion = self.disco.obtener_ubicacion(id_reg)
 
+            try:
+                self.disco.guardar_dato(binario, id_reg)
+            except ValueError as e:
+                # El registro no cabe completo en un sector: se descarta (atómico)
+                resumen["descartados"].append((fila, str(e)))
+                continue
+            except MemoryError:
+                # No hay más sectores libres: se detiene la carga
+                resumen["disco_lleno"] = True
+                break
+
+            ubicacion = self.disco.obtener_ubicacion(id_reg)
             for (col, _), val in zip(estructura, fila):
                 tabla['indices'][col].insertar(val, id_reg, ubicacion)
 
             tabla['registros'][id_reg] = ubicacion
+            resumen["insertados"] += 1
+
+        return resumen
 
     def buscar_por_campo(self, nombre_tabla, columna, valor):
         tabla = self.tablas.get(nombre_tabla)
@@ -90,6 +114,16 @@ class BaseDeDatos:
 
         if min_c > max_c:
             min_c, max_c = max_c, min_c
+
+        # ── CORRECCIÓN: solo para columnas de texto ──────────────────────
+        # Una comparación de strings es letra por letra: "L" < "Leo" es
+        # falso porque "Leo" sigue agregando caracteres después de "L".
+        # Para que el usuario pueda escribir "L" y que incluya cualquier
+        # palabra que empiece con esa letra (Leo, Luis, etc.), se le
+        # agrega un sufijo que la hace "mayor" que cualquier palabra que
+        # comience igual.
+        if tipo is str:
+            max_c = max_c + "\uffff"
 
         avl = tabla['indices'].get(columna)
         if not avl:

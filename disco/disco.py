@@ -1,4 +1,6 @@
 from disco.sector import Sector
+
+
 class DISCO:
     def __init__(self, platos=2, pistas=20, sectores_por_pista=20, tamano_sector=16):
         self.platos = platos
@@ -9,7 +11,7 @@ class DISCO:
 
         self.total_sectores = platos * self.superficies_por_plato * pistas * sectores_por_pista
         self.sectores = [None] * self.total_sectores
-        self.mapa_ubicacion_fisica = {}  
+        self.mapa_ubicacion_fisica = {}
 
     def _chs_a_lba(self, plato, superficie, pista, sector):
         spp = self.sectores_por_pista
@@ -35,42 +37,53 @@ class DISCO:
         sector = resto_sup % spp
         return (plato, superficie, pista, sector)
 
+    # ──────────────────────────────────────────────────────────────────
+    #  ALMACENAMIENTO ATÓMICO
+    #  Un registro ocupa SIEMPRE un único sector completo.
+    #  Si no cabe entero, se rechaza (no se fragmenta).
+    # ──────────────────────────────────────────────────────────────────
     def guardar_dato(self, registro_bytes, id_registro):
-        
-        offset = 0
-        total = len(registro_bytes)
-        ubicaciones = []
+        tamano = len(registro_bytes)
 
-        while offset < total:
-            fragmento_restante = registro_bytes[offset:]
+        # 1) El registro debe caber COMPLETO en un sector
+        if tamano > self.tamano_sector:
+            raise ValueError(
+                f"El registro '{id_registro}' pesa {tamano} bytes y el sector "
+                f"solo tiene {self.tamano_sector} bytes. El registro no se "
+                f"fragmenta: debe caber completo o se descarta."
+            )
 
-            for lba in range(len(self.sectores)):
-                sector = self.sectores[lba]
-                if sector is None:
-                    sector = Sector(self.tamano_sector)
-                    self.sectores[lba] = sector
+        # 2) Buscar un sector con espacio suficiente para el registro completo
+        for lba in range(self.total_sectores):
+            sector = self.sectores[lba]
+            if sector is None:
+                sector = Sector(self.tamano_sector)
+                self.sectores[lba] = sector
 
-                guardado = sector.agregar_fragmento(id_registro, fragmento_restante)
-                if guardado > 0:
-                    frag = sector.fragmentos[-1]
-                    ubicaciones.append((lba, frag['inicio'], frag['fin']))
-                    offset += guardado
-                    break  
-            else:
-                raise MemoryError("¡Disco lleno!")
-        self.mapa_ubicacion_fisica[id_registro] = ubicaciones
+            if sector.espacio_disponible() >= tamano:
+                guardado = sector.agregar_fragmento(id_registro, registro_bytes)
+                frag = sector.fragmentos[-1]
+                # Un solo sector, una sola entrada en el directorio
+                self.mapa_ubicacion_fisica[id_registro] = [(lba, frag['inicio'], frag['fin'])]
+                return
+
+        # 3) No hay ningún sector con espacio suficiente
+        raise MemoryError(
+            f"Disco lleno: no hay un sector con {tamano} bytes disponibles "
+            f"para el registro '{id_registro}'."
+        )
 
     def recuperar_dato(self, id_registro):
         if id_registro not in self.mapa_ubicacion_fisica:
             return None
 
-        fragmentos = []
-        for lba, _, _ in self.mapa_ubicacion_fisica[id_registro]:
-            sector = self.sectores[lba]
-            if sector:
-                fragmentos.extend(sector.obtener_fragmentos(id_registro))
+        lba, _, _ = self.mapa_ubicacion_fisica[id_registro][0]
+        sector = self.sectores[lba]
+        if not sector:
+            return None
 
-        return b''.join(fragmentos)
+        fragmentos = sector.obtener_fragmentos(id_registro)
+        return fragmentos[0] if fragmentos else None
 
     def obtener_ubicacion(self, id_registro):
         return self.mapa_ubicacion_fisica.get(id_registro, None)

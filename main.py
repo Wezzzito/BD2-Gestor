@@ -2,7 +2,6 @@
 # - BUSTAMANTE TORRES, FABIAN
 # - MEDINA GRADOS, FABIAN 
 # - SALAS RAMOS, RODRIGO
-
 import sys
 import os
 import csv
@@ -20,7 +19,6 @@ def main():
     config = ConfigDialog()
     if not config.exec():
         return
-
     valores = config.get_valores()
     disco = DISCO(
         platos=valores["platos"],
@@ -37,7 +35,6 @@ def main():
 
     # 3. Cargar estructura y datos
     bd = BaseDeDatos(disco)
-
     try:
         sql = leer_sql(archivos.ruta_txt)
         nombre_tabla, estructura = parse_create_table(sql)
@@ -55,12 +52,38 @@ def main():
 
         bd.definir_tabla(nombre_tabla, estructura)
 
-        try:
-            bd.cargar_datos(nombre_tabla, filas)
-        except MemoryError:
-            QMessageBox.warning(None, "Advertencia",
-                                "El disco se llenó durante la carga.\n"
-                                "Se guardaron los registros que alcanzaron espacio.")
+        # ── Carga atómica: cada registro debe caber completo en un sector ──
+        resumen = bd.cargar_datos(nombre_tabla, filas)
+
+        # Construir mensaje de resultado para el usuario
+        total = len(filas)
+        msg = f"Se almacenaron {resumen['insertados']} de {total} registros.\n"
+
+        if resumen["descartados"]:
+            n_desc = len(resumen["descartados"])
+            msg += f"\n⚠ {n_desc} registro(s) NO se almacenaron por no caber " \
+                   f"completos en un sector (no se fragmentan).\n"
+            # Mostrar el motivo del primer descartado como ejemplo
+            ejemplo = resumen["descartados"][0][1]
+            msg += f"Ejemplo: {ejemplo}"
+
+        if resumen["disco_lleno"]:
+            msg += "\n\n⚠ El disco se llenó durante la carga. " \
+                   "La carga se detuvo, los registros ya guardados quedaron intactos."
+
+        if resumen["insertados"] == 0:
+            QMessageBox.critical(
+                None, "No se pudo almacenar ningún registro",
+                "Ningún registro cupo en un sector.\n\n"
+                f"Aumente el tamaño del sector (actual: {valores['tamano']} bytes) "
+                "para que pueda contener al menos un registro completo."
+            )
+            return
+        elif resumen["descartados"] or resumen["disco_lleno"]:
+            QMessageBox.warning(None, "Carga parcial", msg)
+        else:
+            QMessageBox.information(None, "Carga completa", msg)
+
     except Exception as e:
         QMessageBox.critical(None, "Error", f"Error al cargar CSV:\n{e}")
         return

@@ -1137,6 +1137,10 @@ class VentanaPrincipal(QMainWindow):
                 max_c = tipo(mx)
                 if min_c > max_c:
                     min_c, max_c = max_c, min_c
+                # Mismo ajuste que en buscar_por_rango: en texto, el máximo
+                # debe incluir cualquier palabra que empiece con esa letra.
+                if tipo is str:
+                    max_c = max_c + "\uffff"
                 claves_resaltadas = set(_claves_en_rango(avl, min_c, max_c)) if avl else set()
             except (ValueError, TypeError):
                 claves_resaltadas = set()

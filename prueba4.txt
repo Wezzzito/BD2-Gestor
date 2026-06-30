@@ -1,0 +1,6 @@
+CREATE TABLE estudiantes (
+    id INT,               -- 4 bytes
+    nombre VARCHAR(12),   -- 12 bytes
+    promedio DECIMAL      -- 4 bytes
+);
+-- Total: 20 bytes por registro
