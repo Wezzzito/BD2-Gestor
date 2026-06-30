@@ -33,12 +33,21 @@ def parse_create_table(sql):
 
         nombre, tipo, params = match.groups()
 
-        if tipo == "varchar" and params:
+        if tipo in ("varchar", "char", "string") and params:
             estructura.append((nombre, f"{int(params)}s"))
-        elif tipo in ("int", "integer"):
+        elif tipo in ("text", "string"):
+            # Si no dan tamaño en el string, asignamos 255 por defecto
+            estructura.append((nombre, "255s"))
+        elif tipo in ("int", "integer", "entero"):
             estructura.append((nombre, "i"))
-        elif tipo == "decimal":
-            estructura.append((nombre, "d"))
+        elif tipo in ("decimal", "double", "float", "numeric", "real"):
+            estructura.append((nombre, "d"))  # d = double (8 bytes) para máxima precisión
+        elif tipo in ("boolean", "bool"):
+            estructura.append((nombre, "?"))  # ? = boolean (1 byte)
+        elif tipo in ("date",):
+            estructura.append((nombre, "10s")) # Fecha YYYY-MM-DD
+        elif tipo in ("datetime", "timestamp"):
+            estructura.append((nombre, "19s")) # YYYY-MM-DD HH:MM:SS
 
     return nombre_tabla, estructura  
 
@@ -83,13 +92,13 @@ def desempaquetar(estructura, registro_bytes):
 
 def convertir_fila(estructura, fila_dict):
     fila_convertida = []
+    # Convertimos todas las llaves del CSV a minúsculas para un match perfecto
+    fila_dict_lower = {str(k).strip().lower(): v for k, v in fila_dict.items() if k is not None}
+    
     for (col, tipo) in estructura:
-        val = (
-            fila_dict.get(col) or
-            fila_dict.get(col.capitalize()) or
-            fila_dict.get(col.upper()) or
-            fila_dict.get(col.lower())
-        )
+        col_buscada = col.lower()
+        val = fila_dict_lower.get(col_buscada)
+        
         if val is None:
             raise KeyError(f"Columna '{col}' no encontrada en el CSV")
 
@@ -97,6 +106,9 @@ def convertir_fila(estructura, fila_dict):
             fila_convertida.append(int(val))
         elif tipo == 'd':
             fila_convertida.append(float(val))
+        elif tipo == '?':
+            val_bool = str(val).strip().lower() in ('1', 'true', 't', 'yes', 'y')
+            fila_convertida.append(val_bool)
         elif tipo.endswith('s'):
             fila_convertida.append(val.strip())
         else:

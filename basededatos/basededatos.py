@@ -9,10 +9,17 @@ class BaseDeDatos:
 
     def definir_tabla(self, nombre_tabla, estructura):
         columnas = [col for col, _ in estructura]
+        
+        def bool_parser(v):
+            if isinstance(v, str):
+                return v.strip().lower() in ('1', 'true', 't', 'yes', 'y')
+            return bool(v)
+
         tipos = {
             col: (
                 int   if tipo == 'i' else
                 float if tipo == 'd' else
+                bool_parser if tipo == '?' else
                 str
             )
             for col, tipo in estructura

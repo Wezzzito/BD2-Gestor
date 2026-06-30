@@ -1,0 +1,16 @@
+CREATE TABLE pacientes (
+    MF bool,
+    AGE int,
+    Urea float,
+    Cr float,
+    HbA1c float,
+    Chol float,
+    TG float,
+    HDL float,
+    LDL float,
+    VLDL float,
+    B0I float,
+    P int,
+    N int,
+    Y int
+);
