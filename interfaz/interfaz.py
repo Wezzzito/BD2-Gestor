@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import (
     QComboBox, QSpinBox, QLineEdit, QPushButton, QLabel, QGroupBox,
     QTableWidget, QTableWidgetItem, QDialog, QFormLayout, QFileDialog,
     QRadioButton, QButtonGroup, QFrame, QSizePolicy, QMessageBox,
-    QSplitter, QApplication, QHeaderView, QTabWidget, QScrollArea
+    QSplitter, QApplication, QHeaderView, QTabWidget, QScrollArea, QCheckBox
 )
 from PyQt6.QtGui import (
     QPainter, QColor, QFont, QPen, QBrush, QPainterPath, QLinearGradient,
@@ -269,6 +269,12 @@ class ArchivosDialog(QDialog):
         cl.addWidget(self.card_txt)
         cl.addWidget(self.card_csv)
         layout.addWidget(cw, stretch=1)
+
+        self.chk_headers = QCheckBox("El archivo CSV contiene nombres de columnas en la primera fila")
+        self.chk_headers.setChecked(True)
+        self.chk_headers.setStyleSheet(f"color:{T.TXT}; font-family:'Segoe UI'; font-size:12px; margin-left: 24px; padding-bottom: 10px;")
+        layout.addWidget(self.chk_headers)
+
         bf = QWidget()
         bf.setStyleSheet(f"background:{T.BG1};")
         bfl = QHBoxLayout(bf)

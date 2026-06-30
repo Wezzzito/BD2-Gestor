@@ -45,10 +45,23 @@ def main():
     try:
         filas = []
         with open(archivos.ruta_csv, encoding='utf-8') as archivo:
-            lector = csv.DictReader(archivo, delimiter=',', quotechar='"')
-            for row in lector:
-                fila = convertir_fila(estructura, row)
-                filas.append(fila)
+            if archivos.chk_headers.isChecked():
+                lector = csv.DictReader(archivo, delimiter=',', quotechar='"')
+                for row in lector:
+                    fila = convertir_fila(estructura, row)
+                    filas.append(fila)
+            else:
+                lector = csv.reader(archivo, delimiter=',', quotechar='"')
+                for row in lector:
+                    if not row or not any(row):
+                        continue
+                    # Mapear los valores de la fila a los nombres de la estructura
+                    row_dict = {}
+                    for i, (col, _) in enumerate(estructura):
+                        if i < len(row):
+                            row_dict[col] = row[i]
+                    fila = convertir_fila(estructura, row_dict)
+                    filas.append(fila)
 
         bd.definir_tabla(nombre_tabla, estructura)
 
